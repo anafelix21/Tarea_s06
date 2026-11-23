@@ -37,3 +37,42 @@ def obtener_lineas_cosecha() -> list[LineaCosecha]:
         )
         for fila in filas
     ]
+
+
+_CONSULTA_TOP_CULTIVO_MES = """
+    SELECT TOP 1
+        FORMAT(h.fecha_cosecha, 'yyyy-MM') AS mes,
+        c.id_cultivo,
+        c.nombre AS cultivo,
+        c.id_parcela,
+        SUM(d.kilos_optimos + d.kilos_merma) AS kilos_totales
+    FROM dbo.harvest h
+    JOIN dbo.harvest_planting_cycle d ON d.id_harvest = h.id_harvest
+    JOIN dbo.cultivos c ON c.id_cultivo = d.id_cultivo
+    WHERE h.estado = 1
+      AND FORMAT(h.fecha_cosecha, 'yyyy-MM') = (
+          SELECT FORMAT(MAX(fecha_cosecha), 'yyyy-MM') FROM dbo.harvest WHERE estado = 1
+      )
+    GROUP BY FORMAT(h.fecha_cosecha, 'yyyy-MM'), c.id_cultivo, c.nombre, c.id_parcela
+    ORDER BY kilos_totales DESC
+"""
+
+
+def obtener_top_cultivo_mes() -> dict | None:
+    """Cultivo con más kilos cosechados en el último mes con cosechas.
+
+    SQL Server solo sabe: "el cultivo 4 (parcela PARC-CEN-063) cosechó 925 kg en 2026-11".
+    """
+    with get_connection() as connection:
+        cursor = connection.cursor(as_dict=True)
+        cursor.execute(_CONSULTA_TOP_CULTIVO_MES)
+        fila = cursor.fetchone()
+    if not fila:
+        return None
+    return {
+        "mes": fila["mes"],
+        "id_cultivo": fila["id_cultivo"],
+        "cultivo": fila["cultivo"],
+        "id_parcela": fila["id_parcela"],
+        "kilos": float(fila["kilos_totales"]),
+    }

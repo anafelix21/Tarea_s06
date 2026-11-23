@@ -27,16 +27,18 @@ Tarea_s06/
 │   │   └── analytics/
 │   │       ├── cosecha_service.py       # Resumen, por cultivo, calidad y mensual
 │   │       ├── parcela_service.py       # Parcelas por estado de riego
-│   │       └── rendimiento_service.py   # Rendimiento kg/ha (SQL Server + MongoDB)
+│   │       ├── rendimiento_service.py   # Rendimiento kg/ha (SQL Server + MongoDB)
+│   │       └── top_cultivo_service.py   # Cultivo más cosechado del mes (SQL Server + MongoDB)
 │   ├── routes/
 │   │   ├── cosecha_routes.py        # /analytics/cosechas/...
 │   │   └── parcela_routes.py        # /analytics/parcelas/...
 │   ├── schemas/
-│   │   └── indicador_schema.py      # Estructura común de la respuesta
+│   │   ├── indicador_schema.py      # Estructura común de la respuesta
+│   │   └── analytics_schema.py      # IndicatorResponse (indicador integrado)
 │   ├── static/
 │   │   └── swagger.json             # Documentación OpenAPI
 │   └── main.py                      # Crea la app, registra rutas, /health y errores
-├── tests/                           # 23 pruebas con pytest
+├── tests/                           # 28 pruebas con pytest
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -56,6 +58,7 @@ Tarea_s06/
 
 | Endpoint | Indicador | Fuente | Cálculo en el service |
 | :-- | :-- | :-- | :-- |
+| `GET /analytics/cosechas/top-cultivo` | **Cultivo más cosechado del mes** (integrado) | **SQL Server + MongoDB** | SQL Server da el cultivo con más kilos del último mes; MongoDB da los datos de su parcela |
 | `GET /analytics/cosechas/resumen` | Resumen de cosechas | SQL Server | Total de cosechas, kilos óptimos, merma, total, % de merma global y promedio por cosecha |
 | `GET /analytics/cosechas/por-cultivo` | Kilos por cultivo | SQL Server | Agrupación por cultivo, ordenada de mayor a menor, con % de merma |
 | `GET /analytics/cosechas/calidad` | Calidad según la merma | SQL Server | Clasificación de cada línea: óptima (< 5%), aceptable (5–10%), crítica (10–20%), fuera de norma (> 20%) |
@@ -87,10 +90,37 @@ database/sqlserver.py             → get_connection()  →  SQL Server
   "source": "SQL Server",
   "data": {
     "Óptima (merma menor al 5%)": 14,
-    "Aceptable (merma entre 5% y 10%)": 8,
+    "Aceptable (merma entre 5% y 10%)": 9,
     "Crítica (merma entre 10% y 20%)": 1,
     "Fuera de norma (merma mayor al 20%)": 0
   }
+}
+```
+
+### Indicador integrado: cultivo más cosechado del mes
+
+Construido según la guía del indicador integrado MongoDB + SQL Server (producto → cultivo, ventas → cosechas, productos → parcelas):
+
+| Paso | Archivo | Qué hace |
+| :-- | :-- | :-- |
+| 1 | `repositories/sqlserver/cosecha_repository.py` → `obtener_top_cultivo_mes()` | `SELECT TOP 1` del cultivo con más kilos en el último mes con cosechas. SQL Server solo sabe: *"el cultivo 4 de la parcela PARC-CEN-063 cosechó 925 kg"* |
+| 2 | `repositories/mongodb/parcela_repository.py` → `obtener_parcela_por_id()` | `find_one` de la parcela en la colección `plots` |
+| 3 | `schemas/analytics_schema.py` → `IndicatorResponse` | Estructura estándar: `indicator`, `title`, `chart_type`, `data`, `sources` |
+| 4 | `services/analytics/top_cultivo_service.py` → `get_top_cultivo_mes()` | Integra las dos fuentes y devuelve el `IndicatorResponse` |
+| 5 | `routes/cosecha_routes.py` → `GET /analytics/cosechas/top-cultivo` | Devuelve `result.__dict__`, o 404 `{"message": "No se encontró información"}` |
+| 6 | `static/swagger.json` | Documentado en la etiqueta **Integrado** |
+
+```json
+{
+  "indicator": "top_cultivo_month",
+  "title": "Cultivo más cosechado del mes",
+  "chart_type": "card",
+  "data": {
+    "mes": "2026-11", "id_cultivo": 4, "cultivo": "Mango Kent - Lote 03", "kilos": 925.0,
+    "id_parcela": "PARC-CEN-063", "parcela": "Sector Central - Lote 063",
+    "tipo_suelo": "Franco Limoso", "area_hectareas": 7.05, "estado_riego": "Completo"
+  },
+  "sources": ["SQL Server", "MongoDB"]
 }
 ```
 
@@ -129,7 +159,7 @@ python -m app.main
 python -m pytest -v
 ```
 
-23 pruebas sin base de datos (el repository se reemplaza por datos de ejemplo): cálculos de cada indicador, clasificación de la merma, cruce SQL Server + MongoDB, estructura de las respuestas, errores 404, 405 y 503, y disponibilidad de Swagger.
+28 pruebas sin base de datos (el repository se reemplaza por datos de ejemplo): cálculos de cada indicador, clasificación de la merma, cruce SQL Server + MongoDB (rendimiento y cultivo más cosechado), estructura de las respuestas, errores 404, 405 y 503, y disponibilidad de Swagger.
 
 ## 7. Buenas prácticas aplicadas
 

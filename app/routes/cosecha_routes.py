@@ -5,7 +5,7 @@ Cada ruta solo recibe la petición, llama al service y devuelve la respuesta JSO
 from flask import Blueprint, jsonify
 
 from app.schemas.indicador_schema import respuesta_indicador
-from app.services.analytics import cosecha_service, rendimiento_service
+from app.services.analytics import cosecha_service, rendimiento_service, top_cultivo_service
 
 cosecha_bp = Blueprint("cosechas", __name__, url_prefix="/analytics/cosechas")
 
@@ -58,3 +58,11 @@ def rendimiento_parcela():
         "SQL Server + MongoDB",
         rendimiento_service.rendimiento_por_parcela(),
     ))
+
+
+@cosecha_bp.route("/top-cultivo", methods=["GET"])
+def top_cultivo_mes():
+    result = top_cultivo_service.get_top_cultivo_mes()
+    if not result:
+        return jsonify({"message": "No se encontró información"}), 404
+    return jsonify(result.__dict__)

@@ -30,3 +30,8 @@ def obtener_parcelas_por_ids(ids: list[str]) -> list[Parcela]:
         return []
     documentos = get_database()["plots"].find({"_id": {"$in": ids}}, _CAMPOS)
     return [_a_parcela(d) for d in documentos]
+
+
+def obtener_parcela_por_id(id_parcela: str) -> dict | None:
+    """Datos maestros de una parcela (nombre, área, suelo, riego) mediante su _id."""
+    return get_database()["plots"].find_one({"_id": id_parcela})

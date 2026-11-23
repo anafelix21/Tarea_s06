@@ -5,129 +5,308 @@
     "description": "Indicadores de cosechas (SQL Server) y parcelas (MongoDB) con arquitectura por capas: Route -> Service -> Repository -> Database. Autora: Ana Félix.",
     "version": "1.0.0"
   },
-  "servers": [{ "url": "/" }],
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
   "tags": [
-    { "name": "Cosechas", "description": "Indicadores calculados con datos de SQL Server" },
-    { "name": "Parcelas", "description": "Indicadores calculados con datos de MongoDB" },
-    { "name": "Monitoreo", "description": "Estado de las conexiones" }
+    {
+      "name": "Integrado",
+      "description": "Indicador que integra SQL Server y MongoDB"
+    },
+    {
+      "name": "Cosechas",
+      "description": "Indicadores calculados con datos de SQL Server"
+    },
+    {
+      "name": "Parcelas",
+      "description": "Indicadores calculados con datos de MongoDB"
+    },
+    {
+      "name": "Monitoreo",
+      "description": "Estado de las conexiones"
+    }
   ],
   "paths": {
+    "/analytics/cosechas/top-cultivo": {
+      "get": {
+        "tags": [
+          "Integrado"
+        ],
+        "summary": "Cultivo más cosechado del mes",
+        "description": "Indicador integrado: SQL Server aporta el cultivo con más kilos cosechados en el último mes y MongoDB aporta los datos maestros de su parcela.",
+        "responses": {
+          "200": {
+            "description": "Indicador calculado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "indicator": "top_cultivo_month",
+                  "title": "Cultivo más cosechado del mes",
+                  "chart_type": "card",
+                  "data": {
+                    "mes": "2026-11",
+                    "id_cultivo": 4,
+                    "cultivo": "Mango Kent - Lote 03",
+                    "kilos": 925.0,
+                    "id_parcela": "PARC-CEN-063",
+                    "parcela": "Sector Central - Lote 063",
+                    "tipo_suelo": "Franco Limoso",
+                    "area_hectareas": 7.05,
+                    "estado_riego": "Completo"
+                  },
+                  "sources": [
+                    "SQL Server",
+                    "MongoDB"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay cosechas o la parcela no existe en MongoDB",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "No se encontró información"
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/SinConexion"
+          }
+        }
+      }
+    },
     "/analytics/cosechas/resumen": {
       "get": {
-        "tags": ["Cosechas"],
+        "tags": [
+          "Cosechas"
+        ],
         "summary": "Resumen de cosechas",
         "description": "Total de cosechas, kilos óptimos, merma, kilos totales y porcentaje de merma global.",
         "responses": {
           "200": {
             "description": "Indicador calculado",
-            "content": { "application/json": { "example": {
-              "indicator": "Resumen de cosechas",
-              "description": "Total de cosechas, kilos óptimos, merma y porcentaje de merma global",
-              "source": "SQL Server",
-              "data": { "total_cosechas": 13, "total_lineas": 23, "kilos_optimos": 13485.5, "kilos_merma": 808.0, "kilos_totales": 14293.5, "porcentaje_merma_global": 5.65, "promedio_kilos_por_cosecha": 1099.5 }
-            } } }
+            "content": {
+              "application/json": {
+                "example": {
+                  "indicator": "Resumen de cosechas",
+                  "description": "Total de cosechas, kilos óptimos, merma y porcentaje de merma global",
+                  "source": "SQL Server",
+                  "data": {
+                    "total_cosechas": 13,
+                    "total_lineas": 24,
+                    "kilos_optimos": 13765.5,
+                    "kilos_merma": 828.0,
+                    "kilos_totales": 14593.5,
+                    "porcentaje_merma_global": 5.67,
+                    "promedio_kilos_por_cosecha": 1122.58
+                  }
+                }
+              }
+            }
           },
-          "503": { "$ref": "#/components/responses/SinConexion" }
+          "503": {
+            "$ref": "#/components/responses/SinConexion"
+          }
         }
       }
     },
     "/analytics/cosechas/por-cultivo": {
       "get": {
-        "tags": ["Cosechas"],
+        "tags": [
+          "Cosechas"
+        ],
         "summary": "Kilos cosechados por cultivo",
         "description": "Kilos óptimos, merma, total y porcentaje de merma de cada cultivo, de mayor a menor producción.",
         "responses": {
           "200": {
             "description": "Indicador calculado",
-            "content": { "application/json": { "example": {
-              "indicator": "Kilos cosechados por cultivo",
-              "source": "SQL Server",
-              "data": { "Uva Red Globe - Lote 01": { "kilos_optimos": 3855.0, "kilos_merma": 195.0, "kilos_totales": 4050.0, "porcentaje_merma": 4.81 } }
-            } } }
+            "content": {
+              "application/json": {
+                "example": {
+                  "indicator": "Kilos cosechados por cultivo",
+                  "source": "SQL Server",
+                  "data": {
+                    "Mango Kent - Lote 03": {
+                      "kilos_optimos": 3980.0,
+                      "kilos_merma": 340.0,
+                      "kilos_totales": 4320.0,
+                      "porcentaje_merma": 7.87
+                    }
+                  }
+                }
+              }
+            }
           },
-          "503": { "$ref": "#/components/responses/SinConexion" }
+          "503": {
+            "$ref": "#/components/responses/SinConexion"
+          }
         }
       }
     },
     "/analytics/cosechas/calidad": {
       "get": {
-        "tags": ["Cosechas"],
+        "tags": [
+          "Cosechas"
+        ],
         "summary": "Calidad de cosecha según la merma",
         "description": "Cantidad de líneas de cosecha en cada nivel: óptima (< 5%), aceptable (5% a 10%), crítica (10% a 20%) y fuera de norma (> 20%).",
         "responses": {
           "200": {
             "description": "Indicador calculado",
-            "content": { "application/json": { "example": {
-              "indicator": "Calidad de cosecha según la merma",
-              "source": "SQL Server",
-              "data": { "Óptima (merma menor al 5%)": 14, "Aceptable (merma entre 5% y 10%)": 8, "Crítica (merma entre 10% y 20%)": 1, "Fuera de norma (merma mayor al 20%)": 0 }
-            } } }
+            "content": {
+              "application/json": {
+                "example": {
+                  "indicator": "Calidad de cosecha según la merma",
+                  "source": "SQL Server",
+                  "data": {
+                    "Óptima (merma menor al 5%)": 14,
+                    "Aceptable (merma entre 5% y 10%)": 9,
+                    "Crítica (merma entre 10% y 20%)": 1,
+                    "Fuera de norma (merma mayor al 20%)": 0
+                  }
+                }
+              }
+            }
           },
-          "503": { "$ref": "#/components/responses/SinConexion" }
+          "503": {
+            "$ref": "#/components/responses/SinConexion"
+          }
         }
       }
     },
     "/analytics/cosechas/mensual": {
       "get": {
-        "tags": ["Cosechas"],
+        "tags": [
+          "Cosechas"
+        ],
         "summary": "Kilos cosechados por mes",
         "description": "Kilos totales cosechados en cada mes (yyyy-MM), en orden cronológico.",
         "responses": {
           "200": {
             "description": "Indicador calculado",
-            "content": { "application/json": { "example": {
-              "indicator": "Kilos cosechados por mes",
-              "source": "SQL Server",
-              "data": { "2026-07": 3092.0, "2026-08": 3040.0, "2026-09": 1550.0 }
-            } } }
+            "content": {
+              "application/json": {
+                "example": {
+                  "indicator": "Kilos cosechados por mes",
+                  "source": "SQL Server",
+                  "data": {
+                    "2026-07": 3092.0,
+                    "2026-08": 3040.0,
+                    "2026-09": 1550.0
+                  }
+                }
+              }
+            }
           },
-          "503": { "$ref": "#/components/responses/SinConexion" }
+          "503": {
+            "$ref": "#/components/responses/SinConexion"
+          }
         }
       }
     },
     "/analytics/cosechas/rendimiento-parcela": {
       "get": {
-        "tags": ["Cosechas"],
+        "tags": [
+          "Cosechas"
+        ],
         "summary": "Rendimiento por parcela (kg/ha)",
         "description": "Cruza los kilos cosechados (SQL Server) con el área de cada parcela (MongoDB) y calcula kilos por hectárea.",
         "responses": {
           "200": {
             "description": "Indicador calculado",
-            "content": { "application/json": { "example": {
-              "indicator": "Rendimiento por parcela (kg/ha)",
-              "source": "SQL Server + MongoDB",
-              "data": { "Sector Norte - Lote 001": { "id_parcela": "PARC-NOR-001", "area_hectareas": 5.35, "kilos_totales": 4050.0, "rendimiento_kg_ha": 757.01 } }
-            } } }
+            "content": {
+              "application/json": {
+                "example": {
+                  "indicator": "Rendimiento por parcela (kg/ha)",
+                  "source": "SQL Server + MongoDB",
+                  "data": {
+                    "Sector Norte - Lote 001": {
+                      "id_parcela": "PARC-NOR-001",
+                      "area_hectareas": 5.35,
+                      "kilos_totales": 4050.0,
+                      "rendimiento_kg_ha": 757.01
+                    }
+                  }
+                }
+              }
+            }
           },
-          "503": { "$ref": "#/components/responses/SinConexion" }
+          "503": {
+            "$ref": "#/components/responses/SinConexion"
+          }
         }
       }
     },
     "/analytics/parcelas/estado-riego": {
       "get": {
-        "tags": ["Parcelas"],
+        "tags": [
+          "Parcelas"
+        ],
         "summary": "Parcelas por estado de riego",
         "description": "Cantidad de parcelas activas en cada estado de riego (Completo, En Proceso, Pendiente).",
         "responses": {
           "200": {
             "description": "Indicador calculado",
-            "content": { "application/json": { "example": {
-              "indicator": "Parcelas por estado de riego",
-              "source": "MongoDB",
-              "data": { "En Proceso": 50, "Completo": 49, "Pendiente": 49 }
-            } } }
+            "content": {
+              "application/json": {
+                "example": {
+                  "indicator": "Parcelas por estado de riego",
+                  "source": "MongoDB",
+                  "data": {
+                    "En Proceso": 50,
+                    "Completo": 49,
+                    "Pendiente": 49
+                  }
+                }
+              }
+            }
           },
-          "503": { "$ref": "#/components/responses/SinConexion" }
+          "503": {
+            "$ref": "#/components/responses/SinConexion"
+          }
         }
       }
     },
     "/health": {
       "get": {
-        "tags": ["Monitoreo"],
+        "tags": [
+          "Monitoreo"
+        ],
         "summary": "Estado de las bases de datos",
         "responses": {
-          "200": { "description": "SQL Server y MongoDB responden", "content": { "application/json": { "example": { "status": "UP", "databases": { "sqlserver": "UP", "mongodb": "UP" } } } } },
-          "503": { "description": "Alguna base de datos no responde", "content": { "application/json": { "example": { "status": "DEGRADED", "databases": { "sqlserver": "DOWN", "mongodb": "UP" } } } } }
+          "200": {
+            "description": "SQL Server y MongoDB responden",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "UP",
+                  "databases": {
+                    "sqlserver": "UP",
+                    "mongodb": "UP"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Alguna base de datos no responde",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "DEGRADED",
+                  "databases": {
+                    "sqlserver": "DOWN",
+                    "mongodb": "UP"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -136,7 +315,14 @@
     "responses": {
       "SinConexion": {
         "description": "No se pudo calcular el indicador porque una base de datos no responde",
-        "content": { "application/json": { "example": { "error": "No se pudo calcular el indicador", "detail": "Verifique la conexión con SQL Server y MongoDB (GET /health)" } } }
+        "content": {
+          "application/json": {
+            "example": {
+              "error": "No se pudo calcular el indicador",
+              "detail": "Verifique la conexión con SQL Server y MongoDB (GET /health)"
+            }
+          }
+        }
       }
     }
   }
